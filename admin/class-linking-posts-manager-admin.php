@@ -107,9 +107,19 @@ class Linking_Posts_Manager_Admin {
 
         wp_nonce_field( 'linking_posts_meta_box', 'linking_posts_meta_box_nonce' );
 
+        add_filter('posts_fields', array( $this, 'posts_fields_filter_related_posts' ) );
+        add_filter('posts_join', array( $this, 'posts_join_filter_related_posts' ) );
+        add_filter('posts_where', array( $this, 'posts_where_filter_related_posts' ) );
+
         $linked_posts = new WP_Query($args);
 
+        remove_filter('posts_fields', array( $this, 'posts_fields_filter_related_posts' ) );
+        remove_filter('posts_join', array( $this, 'posts_join_filter_related_posts' ) );
+        remove_filter('posts_where', array( $this, 'posts_where_filter_related_posts' ) );
+
         echo '<ul id="sortable">';
+
+        $linked_posts_ids = array();
 
         while ( $linked_posts->have_posts() ) :
 
@@ -117,15 +127,21 @@ class Linking_Posts_Manager_Admin {
 
             global $post;
 
-            echo '<li id="linking_posts_orders_'.$post->ID.'" class="ui-state-default">'.$post->post_title.' - <a class="remove-post-link" href="#'.$post->ID.'">remove</a></li>';
+            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default">'.$post->related_post_title.' - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
+
+            $linked_posts_ids[] = $post->related_post_ID;
 
         endwhile;
+
+        wp_cache_add( $post->ID, $linked_posts_ids, 'linked_posts_ids' );
 
         echo '</ul>';
 
         echo '<hr>';
 
+        add_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
         $linking_posts = new WP_Query($args);
+        remove_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
 
         echo '<h4>Add related post</h4>';
 
@@ -208,5 +224,39 @@ class Linking_Posts_Manager_Admin {
     <?php
 
     }
+
+    public function posts_fields_filter_related_posts( $fields ) {
+        global $table_prefix, $wpdb;
+        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
+        return ($fields);
+    }
+
+    public function posts_join_filter_related_posts( $join ) {
+        global $table_prefix, $wpdb;
+        $join .=
+            "
+              LEFT JOIN " . $table_prefix . "related_posts
+                ON (" . $table_prefix . "related_posts.linking_post_id = $wpdb->posts.ID)
+              LEFT JOIN " . $table_prefix . "posts as related_post_details
+                ON (" . $table_prefix . "related_posts.related_post_id = related_post_details.ID)
+            ";
+        return $join;
+    }
+
+        public function posts_where_filter_related_posts( $where ) {
+        global $post, $table_prefix, $wpdb;
+        $where .= " AND " . $table_prefix . "related_posts.linking_post_id = " . $post->ID;
+        return $where;
+    }
+
+    public function posts_where_filter_linking_posts( $where ) {
+        global $post, $wpdb;
+        $where .= " AND $wpdb->posts.id != " . $post->ID;
+        if ( $data = wp_cache_get( $post->ID, 'linked_posts_ids' ) ) {
+            $where .= " AND $wpdb->posts.id NOT IN ( " . implode( ',', $data ) . ")";
+        }
+        return $where;
+    }
+
 
 }
