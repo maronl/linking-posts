@@ -97,6 +97,13 @@ class Linking_Posts_Manager {
     private function define_admin_hooks() {
 
         $admin = new Linking_Posts_Manager_Admin( $this->version );
+        $this->loader->add_action( 'admin_init', $admin, 'register_scripts' );
+        $this->loader->add_action( 'admin_init', $admin, 'register_styles' );
+        $this->loader->add_action( 'admin_enqueue_scripts', $admin, 'enqueue_scripts' );
+        $this->loader->add_action( 'admin_enqueue_scripts', $admin, 'enqueue_styles' );
+        $this->loader->add_action( 'wp_ajax_update_related_posts_orders', $admin, 'update_ajax_related_posts_orders' );
+        $this->loader->add_action( 'wp_ajax_add_related_post', $admin, 'add_ajax_related_post' );
+        $this->loader->add_action( 'wp_ajax_remove_related_post', $admin, 'remove_ajax_related_post' );
         $this->loader->add_action( 'add_meta_boxes', $admin, 'add_meta_box_related_posts' );
         $this->loader->add_action( 'add_meta_boxes', $admin, 'add_meta_box_linking_posts' );
         $this->loader->add_action( 'activate_linking-posts', $admin, 'install_db_structure' );

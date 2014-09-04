@@ -51,11 +51,11 @@ class Linking_Posts_Manager_Admin {
     }
 
     public function register_scripts() {
-        wp_register_script( 'linking-posts-admin-js', plugins_url( 'js/linking-post-admin.min.js', __FILE__ ), array( 'jquery-ui-sortable' ) );
+        wp_register_script( 'linking-posts-admin-js', plugins_url( 'js/linking-posts-admin.js', __FILE__ ), array( 'jquery-ui-sortable' ) );
     }
 
     public function register_styles() {
-        wp_register_style( 'linking-posts-admin-css', plugins_url( 'css/secure-attachments-admin.min.css', __FILE__  ) );
+        wp_register_style( 'linking-posts-admin-css', plugins_url( 'css/secure-attachments-admin.css', __FILE__  ) );
     }
 
     public function enqueue_styles($hook) {
@@ -72,6 +72,7 @@ class Linking_Posts_Manager_Admin {
     }
 
     function is_related_posts_metabox_enabled( $hook ) {
+        global $post_type;
         if ( is_admin()
             && ( 'post.php' == $hook || 'post-new.php' == $hook )
             && isset($this->related_posts_connections[$post_type])
@@ -138,12 +139,13 @@ class Linking_Posts_Manager_Admin {
 
         $linked_posts_ids = array();
 
+        usort( $linked_posts->posts, array($this, 'issue_articles_order_compare') );
 
         while ( $linked_posts->have_posts() ) :
 
             $linked_posts->the_post();
 
-            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default"><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a> - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
+            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default"><div class="dashicons dashicons-sort"></div><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a> - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
 
             $linked_posts_ids[] = $post->related_post_ID;
 
@@ -161,7 +163,7 @@ class Linking_Posts_Manager_Admin {
 
         echo '<h4>Add related post</h4>';
 
-        echo '<select id="article-items">';
+        echo '<select id="possible-related-posts">';
 
         echo '<option>Select a post</option>';
 
@@ -184,55 +186,8 @@ class Linking_Posts_Manager_Admin {
         $post = $current_post;
 
         ?>
+
         <script>
-            jQuery(function() {
-                jQuery( "#sortable" ).sortable();
-                jQuery( "#sortable" ).disableSelection();
-
-                jQuery( "#save-issue-menu").click( function() {
-
-                    var data = 'action=update_issue_articles_orders&post_ID=' + jQuery('#post_ID').val() + '&' + jQuery( "#sortable" ).sortable( 'serialize' );
-
-                    jQuery.post(ajaxurl, data, function(response) {
-                        console.log( 'Got this from the server: ' + response );
-                    });
-                });
-
-                jQuery( "#add-article-issue").click( function() {
-
-                    var data = 'action=add_article_issue'
-                        + '&post_ID=' + jQuery('#post_ID').val()
-                        + '&article_order=' + ( jQuery( "#sortable li").length + 1 )
-                        + '&new_article_ID=' + jQuery( "#article-items option:selected" ).val()
-                        + '&new_article_title=' + jQuery( "#article-items option:selected" ).text();
-
-                    jQuery.post(ajaxurl, data, function(response) {
-
-                        if(response.status == 1){
-
-                            new_article = '<li id="articles_orders_' + response.data.id + '" class="ui-state-default">' + response.data.title + '</li>';
-
-                            jQuery("#sortable").append(new_article);
-                            jQuery("#sortable").sortable('refresh');
-                        }
-                    },'json');
-                });
-
-                jQuery( ".remove-article-issue").click( function() {
-
-                    var data = 'action=remove_article_issue'
-                        + '&post_ID=' + jQuery('#post_ID').val()
-                        + '&article_ID=' + jQuery( this ).attr('href').slice(1)
-
-                    jQuery.post(ajaxurl, data, function(response) {
-
-                        if(response.status == 1){
-                            jQuery( '#articles_orders_' + response.data.article_ID).slideUp( 'normal', function() { $(this).remove(); } );
-                        }
-                    },'json');
-                });
-
-            });
 
 
 
@@ -275,9 +230,62 @@ class Linking_Posts_Manager_Admin {
 
     }
 
+    function update_ajax_related_posts_orders() {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        if( $this->update_related_posts_orders( $_POST['post_ID'], $_POST['linked_posts_orders'] ) ){
+            echo 1;
+        }else{
+            echo 0;
+        }
+
+        die();
+
+    }
+
+    function add_ajax_related_post() {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        if( $this->add_related_post( $_POST['post_ID'], $_POST['new_related_post_ID'], $_POST['new_related_post_order'] ) ) {
+            $res = array(
+                'status' => 1,
+                'data' => array(
+                    'id' => $_POST['new_related_post_ID'],
+                    'title' => $_POST['new_related_post_title'],
+                ),
+            );
+            echo json_encode( $res );
+        }else{
+            echo 0;
+        }
+
+        die();
+
+    }
+
+    function remove_ajax_related_post() {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        if( $this->remove_related_post( $_POST['post_ID'], $_POST['related_post_ID'] ) ) {
+            $res = array(
+                'status' => 1,
+                'data' => array(
+                    'post_ID' => $_POST['post_ID'],
+                    'related_post_ID' => $_POST['related_post_ID'],
+                ),
+            );
+            echo json_encode( $res );
+        }else{
+            echo 0;
+        }
+
+        die();
+
+    }
+
     public function posts_fields_filter_related_posts( $fields ) {
         global $table_prefix, $wpdb;
-        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
+        $fields .= ", " . $table_prefix . "related_posts.order as article_order, related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
         return ($fields);
     }
 
@@ -332,5 +340,73 @@ class Linking_Posts_Manager_Admin {
         return $where;
     }
 
+    function update_related_posts_orders( $linking_post_id = null, $ordered_related_posts_ids = array() ) {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        $order = 0;
+
+        foreach( $ordered_related_posts_ids as $related_post_id ) {
+            $order++;
+            $wpdb->replace(
+                $table_prefix . 'related_posts',
+                array(
+                    'linking_post_id' => $linking_post_id,
+                    'related_post_id' => $related_post_id,
+                    'order' => $order,
+                ),
+                array(
+                    '%d',
+                    '%d',
+                    '%d',
+                )
+            );
+        }
+
+        return true;
+
+    }
+
+    function add_related_post( $linking_post_id = null, $related_post_id = null, $order = 0 ) {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        $wpdb->replace(
+            $table_prefix . 'related_posts',
+            array(
+                'linking_post_id' => $linking_post_id,
+                'related_post_id' => $related_post_id,
+                'order' => $order,
+            ),
+            array(
+                '%d',
+                '%d',
+                '%d',
+            )
+        );
+
+        return true;
+    }
+
+    function remove_related_post( $linking_post_id = null, $related_post_id = null ) {
+        global $table_prefix, $wpdb; // this is how you get access to the database
+
+        $wpdb->delete(
+            $table_prefix . 'related_posts',
+            array(
+                'linking_post_id' => $linking_post_id,
+                'related_post_id' => $related_post_id,
+            ),
+            array(
+                '%d',
+                '%d',
+            )
+        );
+
+        return true;
+
+    }
+
+    function issue_articles_order_compare($a, $b){
+        return $a->article_order - $b->article_order;
+    }
 
 }
