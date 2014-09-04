@@ -82,7 +82,7 @@ class Linking_Posts_Manager_Admin {
         }
     }
 
-    function add_meta_box_linking_posts() {
+    function add_meta_box_related_posts() {
 
         global $post_type;
 
@@ -97,8 +97,25 @@ class Linking_Posts_Manager_Admin {
 
     }
 
+    function add_meta_box_linking_posts() {
+
+        global $post_type;
+
+        if( isset($this->linking_posts_connections[$post_type] ) ) {
+            add_meta_box(
+                'linking_posts_list',
+                __("Linking Posts", 'linking-posts'),
+                array($this, 'render_meta_box_linking_posts'),
+                $this->linking_posts_connections[$post_type]
+            );
+        }
+
+    }
+
     function render_meta_box_related_posts( $post ) {
 
+        global $post;
+        $current_post = $post;
 
         $args = array(
             'post_type' => $this->related_posts_connections[$post->post_type],
@@ -121,13 +138,12 @@ class Linking_Posts_Manager_Admin {
 
         $linked_posts_ids = array();
 
+
         while ( $linked_posts->have_posts() ) :
 
             $linked_posts->the_post();
 
-            global $post;
-
-            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default">'.$post->related_post_title.' - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
+            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default"><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a> - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
 
             $linked_posts_ids[] = $post->related_post_ID;
 
@@ -139,9 +155,9 @@ class Linking_Posts_Manager_Admin {
 
         echo '<hr>';
 
-        add_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
-        $linking_posts = new WP_Query($args);
-        remove_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
+        add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
+        $possible_linking_posts = new WP_Query($args);
+        remove_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
 
         echo '<h4>Add related post</h4>';
 
@@ -149,11 +165,9 @@ class Linking_Posts_Manager_Admin {
 
         echo '<option>Select a post</option>';
 
-        while ( $linking_posts->have_posts() ) :
+        while ( $possible_linking_posts->have_posts() ) :
 
-            $linking_posts->the_post();
-
-            global $post;
+            $possible_linking_posts->the_post();
 
             echo '<option value="'.$post->ID.'">'.$post->post_title.'</option>';
 
@@ -166,6 +180,8 @@ class Linking_Posts_Manager_Admin {
         echo '<hr>';
 
         echo '<a id="save-issue-menu" class="button button-primary">Save Related Posts</a>';
+
+        $post = $current_post;
 
         ?>
         <script>
@@ -225,7 +241,47 @@ class Linking_Posts_Manager_Admin {
 
     }
 
+    function render_meta_box_linking_posts( $post ) {
+
+        global $post;
+        $current_post = $post;
+
+        $args = array(
+            'post_type' => $this->linking_posts_connections[$post->post_type],
+            'post_status' => $this->related_posts_valid_status,
+        );
+
+        add_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
+        add_filter('posts_join', array( $this, 'posts_join_filter_linking_posts' ) );
+        add_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
+        $linking_posts = new WP_Query($args);
+        remove_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
+        remove_filter('posts_join', array( $this, 'posts_join_filter_linking_posts' ) );
+        remove_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
+
+        echo '<ul>';
+
+        while ( $linking_posts->have_posts() ) :
+
+            $linking_posts->the_post();
+
+            echo '<li><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a></li>';
+
+        endwhile;
+
+        echo '</ul>';
+
+        $post = $current_post;
+
+    }
+
     public function posts_fields_filter_related_posts( $fields ) {
+        global $table_prefix, $wpdb;
+        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
+        return ($fields);
+    }
+
+    public function posts_fields_filter_linking_posts( $fields ) {
         global $table_prefix, $wpdb;
         $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
         return ($fields);
@@ -243,13 +299,31 @@ class Linking_Posts_Manager_Admin {
         return $join;
     }
 
-        public function posts_where_filter_related_posts( $where ) {
+    public function posts_join_filter_linking_posts( $join ) {
+        global $table_prefix, $wpdb;
+        $join .=
+            "
+              LEFT JOIN " . $table_prefix . "related_posts
+                ON (" . $table_prefix . "related_posts.related_post_id = $wpdb->posts.ID)
+              LEFT JOIN " . $table_prefix . "posts as related_post_details
+                ON (" . $table_prefix . "related_posts.linking_post_id = related_post_details.ID)
+            ";
+        return $join;
+    }
+
+    public function posts_where_filter_related_posts( $where ) {
         global $post, $table_prefix, $wpdb;
         $where .= " AND " . $table_prefix . "related_posts.linking_post_id = " . $post->ID;
         return $where;
     }
 
     public function posts_where_filter_linking_posts( $where ) {
+        global $post, $table_prefix, $wpdb;
+        $where .= " AND " . $table_prefix . "related_posts.related_post_id = $post->ID";
+        return $where;
+    }
+
+    public function posts_where_filter_possible_linking_posts( $where ) {
         global $post, $wpdb;
         $where .= " AND $wpdb->posts.id != " . $post->ID;
         if ( $data = wp_cache_get( $post->ID, 'linked_posts_ids' ) ) {

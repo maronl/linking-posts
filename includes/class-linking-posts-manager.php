@@ -97,6 +97,7 @@ class Linking_Posts_Manager {
     private function define_admin_hooks() {
 
         $admin = new Linking_Posts_Manager_Admin( $this->version );
+        $this->loader->add_action( 'add_meta_boxes', $admin, 'add_meta_box_related_posts' );
         $this->loader->add_action( 'add_meta_boxes', $admin, 'add_meta_box_linking_posts' );
         $this->loader->add_action( 'activate_linking-posts', $admin, 'install_db_structure' );
         register_activation_hook( dirname( dirname( __FILE__ ) ) . '\linking-posts.php' , array( $admin, 'install_db_structure' ) );
