@@ -79,6 +79,7 @@ class Linking_Posts_Manager {
      * @access private
      */
     private function load_dependencies() {
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-linking-posts-options.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-linking-posts-manager-admin.php';
         require_once plugin_dir_path( __FILE__ ) . 'class-linking-posts-loader.php';
         $this->loader = new Linking_Posts_Loader();
@@ -101,6 +102,8 @@ class Linking_Posts_Manager {
         $this->loader->add_action( 'admin_init', $admin, 'register_styles' );
         $this->loader->add_action( 'admin_enqueue_scripts', $admin, 'enqueue_scripts' );
         $this->loader->add_action( 'admin_enqueue_scripts', $admin, 'enqueue_styles' );
+        $this->loader->add_action( 'admin_menu', $admin, 'add_plugin_options_page' );
+        $this->loader->add_action( 'admin_init', $admin, 'options_page_init' );
         $this->loader->add_action( 'wp_ajax_update_related_posts_orders', $admin, 'update_ajax_related_posts_orders' );
         $this->loader->add_action( 'wp_ajax_add_related_post', $admin, 'add_ajax_related_post' );
         $this->loader->add_action( 'wp_ajax_remove_related_post', $admin, 'remove_ajax_related_post' );

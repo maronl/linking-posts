@@ -1,6 +1,6 @@
 <?php
 
-class Linking_Posts_Manager_Admin {
+class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
     private $version;
 
@@ -51,20 +51,24 @@ class Linking_Posts_Manager_Admin {
     }
 
     public function register_scripts() {
+        parent::register_scripts();
         wp_register_script( 'linking-posts-admin-js', plugins_url( 'js/linking-posts-admin.js', __FILE__ ), array( 'jquery-ui-sortable' ) );
     }
 
     public function register_styles() {
+        parent::register_styles();
         wp_register_style( 'linking-posts-admin-css', plugins_url( 'css/secure-attachments-admin.css', __FILE__  ) );
     }
 
     public function enqueue_styles($hook) {
+        parent::enqueue_styles($hook);
         if( $this->is_related_posts_metabox_enabled($hook) ) {
             wp_enqueue_style( 'secure-attachments-admin-css', false, array(), $this->version );
        }
     }
 
     public function enqueue_scripts($hook) {
+        parent::enqueue_scripts($hook);
         if( $this->is_related_posts_metabox_enabled($hook) ) {
             wp_enqueue_script('jquery-ui-sortable');
             wp_enqueue_script('linking-posts-admin-js');
