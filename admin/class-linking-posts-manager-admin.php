@@ -4,17 +4,27 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
     private $version;
 
-    private $options;
+    private $related_posts_connections = array();
 
-    private $related_posts_connections = array( 'post' => 'post' );
-
-    private  $linking_posts_connections = array( 'post' => 'post' );
+    private $linking_posts_connections = array();
 
     private $related_posts_valid_status = array( 'any' );
 
     function __construct($version)
     {
+        parent::__construct();
         $this->version = $version;
+        $link_settings = $this->options['linking-settings'];
+        if( ! empty( $link_settings ) ) {
+            $link_settings = explode( ';', $link_settings );
+        }else{
+            $link_settings = array();
+        }
+        foreach( $link_settings as $link_setting ) {
+            $link_setting_values = explode( ',', $link_setting );
+            $this->related_posts_connections[$link_setting_values[0]] = $link_setting_values[1];
+            $this->linking_posts_connections[$link_setting_values[1]] = $link_setting_values[0];
+        }
     }
 
     function install_db_structure() {
@@ -96,7 +106,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
                 'related_posts_list',
                 __("Related Posts", 'linking-posts'),
                 array($this, 'render_meta_box_related_posts'),
-                $this->related_posts_connections[$post_type]
+                $post_type
             );
         }
 
@@ -111,7 +121,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
                 'linking_posts_list',
                 __("Linking Posts", 'linking-posts'),
                 array($this, 'render_meta_box_linking_posts'),
-                $this->linking_posts_connections[$post_type]
+                $post_type
             );
         }
 

@@ -2,11 +2,11 @@
 
 class Linking_Posts_Options {
 
-    private $options;
+    protected $options;
 
     function __construct()
     {
-        $this->options = array();
+        $this->options = get_option( 'linking-posts-options' );
     }
 
     public function register_scripts() {
@@ -39,7 +39,6 @@ class Linking_Posts_Options {
 
     function render_admin_options_page()
     {
-        $this->options = get_option( 'linking-posts-options' );
         ?>
         <div class="wrap">
             <?php screen_icon(); ?>
@@ -106,7 +105,7 @@ class Linking_Posts_Options {
         $checked =( isset( $this->options['single-reference'] ) && $this->options['single-reference'] == 1 ) ? 'checked' : '';
         $description = '<p class="description">' . __('check to allow a post to be linked only by one post.', 'linking-posts') . '</p>';
         printf(
-            '<input type="checkbox" id="single-reference" name="linking-posts-options[single-reference]" value="1" %s/><label for="single-reference">Single Reference</label>%s',
+            '<input type="checkbox" id="single-reference" name="linking-posts-options[single-reference]" value="1" %s  autocomplete="off"/><label for="single-reference">Single Reference</label>%s',
             $checked,
             $description
         );
@@ -114,7 +113,12 @@ class Linking_Posts_Options {
 
     public function linking_settings_callback()
     {
-        $value = isset( $this->options['max-file-size'] ) ? esc_attr( $this->options['max-file-size']) : '';
+        $value = isset( $this->options['linking-settings'] ) ? esc_attr( $this->options['linking-settings']) : '';
+        $link_settings = array();
+        if( ! empty($value) ){
+            $link_settings = explode( ';', $value );
+        }
+        $class_no_settings = ( empty( $link_settings ) ) ? '' : 'class="hidden"';
         $description = '<p class="description">' . __( 'MAX file size in MB (e.g. 2 = 2Mb)', 'secure-attachments' ) . '</p>';
         /*printf(
             '<input type="text" id="max-file-size" name="secure-attachments-options[max-file-size]" value="%s" class="little-text ltr" />%s',
@@ -122,19 +126,24 @@ class Linking_Posts_Options {
             $description
         );*/
         ?>
-        <input id="linking-settings" name="linking-posts-options[linking-settings]" type="hidden" value="post,post;post,page">
-        <ul>
-            <li>Nessuno</li>
-            <li data-linking="post" data-related="post">Post => Post</li>
+        <input id="linking-settings" name="linking-posts-options[linking-settings]" type="hidden" value="<?php echo $value; ?>" autocomplete="off">
+        <ul id="linking-settings-list"">
+            <li id="no-link-settings" <?php echo $class_no_settings; ?>>Nessuno</li>
+            <?php
+                foreach($link_settings as $link_setting){
+                    $link_setting_values = explode( ',', $link_setting );
+                    echo '<li data-linking="' . $link_setting_values[0] . '" data-related="' . $link_setting_values[1] . '">' . $link_setting_values[0] . ' => ' . $link_setting_values[1] . ' - <a href="#' . $link_setting_values[0] . ',' . $link_setting_values[1] . '" class="remove-linking-setting">remove</a></li>';
+                }
+            ?>
         </ul>
 
         Linking element: <select id="linking-post-type">
-            <option value="post">post</option>
-            <option value="page">page</option>
+            <option value="post">Post</option>
+            <option value="page">Page</option>
         </select>
         => Related element: <select id="related-post-type">
-            <option value="post">post</option>
-            <option value="page">page</option>
+            <option value="post">Post</option>
+            <option value="page">Page</option>
         </select>
         <input id="add-linking-setting" type="button" class="button button-primary" value="Add Linking">
 
