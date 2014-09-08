@@ -133,7 +133,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         $current_post = $post;
 
         $args = array(
-            'post_type' => $this->related_posts_connections[$post->post_type],
+            'post_type' => $post->post_type,
             'post_status' => $this->related_posts_valid_status,
         );
 
@@ -170,6 +170,11 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         echo '</ul>';
 
         echo '<hr>';
+
+        $args = array(
+            'post_type' => $this->related_posts_connections[$post->post_type],
+            'post_status' => $this->related_posts_valid_status,
+        );
 
         add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
         $possible_linking_posts = new WP_Query($args);
@@ -216,7 +221,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         $current_post = $post;
 
         $args = array(
-            'post_type' => $this->linking_posts_connections[$post->post_type],
+            'post_type' => $post->post_type,
             'post_status' => $this->related_posts_valid_status,
         );
 
