@@ -177,8 +177,20 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         );
 
         add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
+        if( isset( $this->options['single-reference'] ) && ( $this->options['single-reference'] == 1 ) ) {
+            add_filter('posts_fields', array( $this, 'posts_fields_filter_possible_linking_posts_single_reference' ) );
+            add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts_single_reference' ) );
+            add_filter('posts_join', array( $this, 'posts_join_filter_possible_linking_posts_single_reference' ) );
+            add_filter( 'posts_groupby', array( $this, 'posts_groupby_filter_possible_linking_posts_single_reference' ) );
+        }
         $possible_linking_posts = new WP_Query($args);
         remove_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
+        if( isset( $this->options['single-reference'] ) && ( $this->options['single-reference'] == 1 ) ) {
+            remove_filter('posts_fields', array( $this, 'posts_fields_filter_possible_linking_posts_single_reference' ) );
+            remove_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts_single_reference' ) );
+            remove_filter('posts_join', array( $this, 'posts_join_filter_possible_linking_posts_single_reference' ) );
+            remove_filter( 'posts_groupby', array( $this, 'posts_groupby_filter_possible_linking_posts_single_reference' ) );
+        }
 
         echo '<h4>Add related post</h4>';
 
@@ -314,6 +326,12 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         return ($fields);
     }
 
+    public function posts_fields_filter_possible_linking_posts_single_reference( $fields ) {
+        global $table_prefix, $wpdb;
+        $fields .= ", " . $table_prefix . "related_posts.related_post_id as related_post_ID";
+        return ($fields);
+    }
+
     public function posts_join_filter_related_posts( $join ) {
         global $table_prefix, $wpdb;
         $join .=
@@ -338,6 +356,17 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         return $join;
     }
 
+    public function posts_join_filter_possible_linking_posts_single_reference( $join ) {
+        global $table_prefix, $post, $wpdb;
+        $join .=
+            "
+              LEFT JOIN " . $table_prefix . "related_posts
+                ON (" . $table_prefix . "related_posts.related_post_id = $wpdb->posts.ID)
+            ";
+        return $join;
+    }
+
+
     public function posts_where_filter_related_posts( $where ) {
         global $post, $table_prefix, $wpdb;
         $where .= " AND " . $table_prefix . "related_posts.linking_post_id = " . $post->ID;
@@ -357,6 +386,18 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
             $where .= " AND $wpdb->posts.id NOT IN ( " . implode( ',', $data ) . ")";
         }
         return $where;
+    }
+
+    public function posts_where_filter_possible_linking_posts_single_reference( $where ) {
+        global $post, $wpdb;
+        $where .= " AND related_post_ID is NULL ";
+        return $where;
+    }
+
+    public function posts_groupby_filter_possible_linking_posts_single_reference( $groupby ) {
+        global $wpdb;
+        $groupby = "{$wpdb->posts}.ID";
+        return $groupby;
     }
 
     function update_related_posts_orders( $linking_post_id = null, $ordered_related_posts_ids = array() ) {
