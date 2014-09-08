@@ -114,40 +114,60 @@ class Linking_Posts_Options {
     public function linking_settings_callback()
     {
         $value = isset( $this->options['linking-settings'] ) ? esc_attr( $this->options['linking-settings']) : '';
+        //$linking_post_types = array();
+        //$linked_post_types = array();
         $link_settings = array();
         if( ! empty($value) ){
             $link_settings = explode( ';', $value );
         }
         $class_no_settings = ( empty( $link_settings ) ) ? '' : 'class="hidden"';
-        $description = '<p class="description">' . __( 'MAX file size in MB (e.g. 2 = 2Mb)', 'secure-attachments' ) . '</p>';
-        /*printf(
-            '<input type="text" id="max-file-size" name="secure-attachments-options[max-file-size]" value="%s" class="little-text ltr" />%s',
-            $value,
-            $description
-        );*/
         ?>
+
         <input id="linking-settings" name="linking-posts-options[linking-settings]" type="hidden" value="<?php echo $value; ?>" autocomplete="off">
         <ul id="linking-settings-list"">
             <li id="no-link-settings" <?php echo $class_no_settings; ?>>Nessuno</li>
             <?php
                 foreach($link_settings as $link_setting){
                     $link_setting_values = explode( ',', $link_setting );
-                    echo '<li data-linking="' . $link_setting_values[0] . '" data-related="' . $link_setting_values[1] . '">' . $link_setting_values[0] . ' => ' . $link_setting_values[1] . ' - <a href="#' . $link_setting_values[0] . ',' . $link_setting_values[1] . '" class="remove-linking-setting">remove</a></li>';
+                    //$linking_post_types[] = $link_setting_values[0];
+                    //$linked_post_types[] = $link_setting_values[1];
+                    $format = '<li data-linking="%s" data-related="%s">%s => %s - <a href="#%s,%s" class="remove-linking-setting">remove</a></li>';
+                    printf( $format, $link_setting_values[0], $link_setting_values[1], $link_setting_values[0], $link_setting_values[1], $link_setting_values[0], $link_setting_values[1]);
                 }
             ?>
         </ul>
 
+        <?php
+            $linking_elements = $this->get_linking_post_types();
+        ?>
+
         Linking element: <select id="linking-post-type">
-            <option value="post">Post</option>
-            <option value="page">Page</option>
+            <?php foreach( $linking_elements as $linking_element ) {
+                //if( ! in_array( $linking_element, $linking_post_types) ) {
+                    $format = '<option value="%s">%s</option>';
+                    printf( $format, $linking_element, $linking_element );
+                //}
+            } ?>
         </select>
         => Related element: <select id="related-post-type">
-            <option value="post">Post</option>
-            <option value="page">Page</option>
+            <?php foreach( $linking_elements as $linked_element ) {
+                //if( ! in_array( $linked_element, $linked_post_types) ) {
+                    $format = '<option value="%s">%s</option>';
+                    printf( $format, $linked_element, $linked_element );
+                //}
+            } ?>
         </select>
         <input id="add-linking-setting" type="button" class="button button-primary" value="Add Linking">
 
         <?php
+    }
+
+    function get_linking_post_types() {
+        $linking_elements = get_post_types();
+        unset($linking_elements['attachment']);
+        unset($linking_elements['revision']);
+        unset($linking_elements['nav_menu_item']);
+        return $linking_elements;
     }
 
 } 
