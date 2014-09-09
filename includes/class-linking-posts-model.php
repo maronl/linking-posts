@@ -61,11 +61,11 @@ class Linking_Posts_Model {
 
     }
 
-    public function get_linking_post( $post, $valid_post_status = array() ) {
+    public function get_linking_posts( $post ) {
 
         $args = array(
             'post_type' => $post->post_type,
-            'post_status' => $valid_post_status,
+            //'post_status' => $valid_post_status,
         );
 
         add_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
@@ -88,7 +88,8 @@ class Linking_Posts_Model {
 
     public function posts_fields_filter_linking_posts( $fields ) {
         global $table_prefix, $wpdb;
-        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
+//        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
+        $fields = " related_post_details.*, " . $table_prefix . "related_posts.order as article_order ";
         return ($fields);
     }
 
@@ -142,6 +143,7 @@ class Linking_Posts_Model {
     public function posts_where_filter_linking_posts( $where ) {
         global $post, $table_prefix, $wpdb;
         $where .= " AND " . $table_prefix . "related_posts.related_post_id = $post->ID";
+        $where .= " AND " . $table_prefix . "posts.ID = $post->ID";
         return $where;
     }
 

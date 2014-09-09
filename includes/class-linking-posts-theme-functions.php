@@ -19,10 +19,10 @@ class Linking_Posts_Theme_Functions {
             }
         }
 
-        if( ! function_exists( 'lps_get_linking_post' ) ) {
-            function lps_get_linking_post( $post, $valid_post_status = array() ) {
+        if( ! function_exists( 'lps_get_linking_posts' ) ) {
+            function lps_get_linking_posts( $post ) {
                 $lps_data_model = Linking_Posts_Model::getInstance();
-                return $lps_data_model->get_related_posts( $post, $valid_post_status );
+                return $lps_data_model->get_linking_posts( $post );
             }
         }
 

@@ -209,7 +209,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         global $post;
         $current_post = $post;
 
-        $linking_posts = $this->data_model->get_linking_post( $post, $this->related_posts_valid_status );
+        $linking_posts = $this->data_model->get_linking_posts( $post, $this->related_posts_valid_status );
 
         echo '<ul>';
 
@@ -217,7 +217,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
             $linking_posts->the_post();
 
-            echo '<li><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a></li>';
+            echo '<li><a href="/wp-admin/post.php?post='.$post->ID.'&action=edit">'.$post->post_title.'</a></li>';
 
         endwhile;
 
