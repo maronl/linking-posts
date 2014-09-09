@@ -10,10 +10,13 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
     private $related_posts_valid_status = array( 'any' );
 
-    function __construct($version)
+    private $data_model;
+
+    function __construct($version, $data_model)
     {
         parent::__construct();
         $this->version = $version;
+        $this->data_model = $data_model;
         $link_settings = $this->options['linking-settings'];
         if( ! empty( $link_settings ) ) {
             $link_settings = explode( ';', $link_settings );
@@ -132,34 +135,19 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         global $post;
         $current_post = $post;
 
-        $args = array(
-            'post_type' => $post->post_type,
-            'post_status' => $this->related_posts_valid_status,
-        );
+        $linked_posts = $this->data_model->get_related_posts( $post );
 
         wp_nonce_field( 'linking_posts_meta_box', 'linking_posts_meta_box_nonce' );
-
-        add_filter('posts_fields', array( $this, 'posts_fields_filter_related_posts' ) );
-        add_filter('posts_join', array( $this, 'posts_join_filter_related_posts' ) );
-        add_filter('posts_where', array( $this, 'posts_where_filter_related_posts' ) );
-
-        $linked_posts = new WP_Query($args);
-
-        remove_filter('posts_fields', array( $this, 'posts_fields_filter_related_posts' ) );
-        remove_filter('posts_join', array( $this, 'posts_join_filter_related_posts' ) );
-        remove_filter('posts_where', array( $this, 'posts_where_filter_related_posts' ) );
 
         echo '<ul id="sortable">';
 
         $linked_posts_ids = array();
 
-        usort( $linked_posts->posts, array($this, 'issue_articles_order_compare') );
-
         while ( $linked_posts->have_posts() ) :
 
             $linked_posts->the_post();
 
-            echo '<li id="linked_posts_orders_'.$post->related_post_ID.'" class="ui-state-default"><div class="dashicons dashicons-sort"></div><a href="/wp-admin/post.php?post='.$post->related_post_ID.'&action=edit">'.$post->related_post_title.'</a> - <a class="remove-post-link" href="#'.$post->related_post_ID.'">remove</a></li>';
+            echo '<li id="linked_posts_orders_'.$post->ID.'" class="ui-state-default"><div class="dashicons dashicons-sort"></div><a href="/wp-admin/post.php?post='.$post->ID.'&action=edit">'.$post->post_title.'</a> - <a class="remove-post-link" href="#'.$post->ID.'">remove</a></li>';
 
             $linked_posts_ids[] = $post->related_post_ID;
 
@@ -171,26 +159,15 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
         echo '<hr>';
 
-        $args = array(
-            'post_type' => $this->related_posts_connections[$post->post_type],
-            'post_status' => $this->related_posts_valid_status,
-        );
+        $post = $current_post;
 
-        add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
+        $ppost_type = $this->related_posts_connections[$post->post_type];
+        $pvalid_status = $this->related_posts_valid_status;
+        $psingle_reference = false;
         if( isset( $this->options['single-reference'] ) && ( $this->options['single-reference'] == 1 ) ) {
-            add_filter('posts_fields', array( $this, 'posts_fields_filter_possible_linking_posts_single_reference' ) );
-            add_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts_single_reference' ) );
-            add_filter('posts_join', array( $this, 'posts_join_filter_possible_linking_posts_single_reference' ) );
-            add_filter( 'posts_groupby', array( $this, 'posts_groupby_filter_possible_linking_posts_single_reference' ) );
+            $psingle_reference = true;
         }
-        $possible_linking_posts = new WP_Query($args);
-        remove_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts' ) );
-        if( isset( $this->options['single-reference'] ) && ( $this->options['single-reference'] == 1 ) ) {
-            remove_filter('posts_fields', array( $this, 'posts_fields_filter_possible_linking_posts_single_reference' ) );
-            remove_filter('posts_where', array( $this, 'posts_where_filter_possible_linking_posts_single_reference' ) );
-            remove_filter('posts_join', array( $this, 'posts_join_filter_possible_linking_posts_single_reference' ) );
-            remove_filter( 'posts_groupby', array( $this, 'posts_groupby_filter_possible_linking_posts_single_reference' ) );
-        }
+        $possible_linking_posts = $this->data_model->get_possible_linking_posts( $ppost_type, $pvalid_status, $psingle_reference );
 
         echo '<h4>Add related post</h4>';
 
@@ -232,18 +209,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
         global $post;
         $current_post = $post;
 
-        $args = array(
-            'post_type' => $post->post_type,
-            'post_status' => $this->related_posts_valid_status,
-        );
-
-        add_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
-        add_filter('posts_join', array( $this, 'posts_join_filter_linking_posts' ) );
-        add_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
-        $linking_posts = new WP_Query($args);
-        remove_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
-        remove_filter('posts_join', array( $this, 'posts_join_filter_linking_posts' ) );
-        remove_filter('posts_where', array( $this, 'posts_where_filter_linking_posts' ) );
+        $linking_posts = $this->data_model->get_linking_post( $post, $this->related_posts_valid_status );
 
         echo '<ul>';
 
@@ -264,7 +230,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
     function update_ajax_related_posts_orders() {
         global $table_prefix, $wpdb; // this is how you get access to the database
 
-        if( $this->update_related_posts_orders( $_POST['post_ID'], $_POST['linked_posts_orders'] ) ){
+        if( $this->data_model->update_related_posts_orders( $_POST['post_ID'], $_POST['linked_posts_orders'] ) ){
             echo 1;
         }else{
             echo 0;
@@ -277,7 +243,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
     function add_ajax_related_post() {
         global $table_prefix, $wpdb; // this is how you get access to the database
 
-        if( $this->add_related_post( $_POST['post_ID'], $_POST['new_related_post_ID'], $_POST['new_related_post_order'] ) ) {
+        if( $this->data_model->add_related_post( $_POST['post_ID'], $_POST['new_related_post_ID'], $_POST['new_related_post_order'] ) ) {
             $res = array(
                 'status' => 1,
                 'data' => array(
@@ -297,7 +263,7 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
     function remove_ajax_related_post() {
         global $table_prefix, $wpdb; // this is how you get access to the database
 
-        if( $this->remove_related_post( $_POST['post_ID'], $_POST['related_post_ID'] ) ) {
+        if( $this->data_model->remove_related_post( $_POST['post_ID'], $_POST['related_post_ID'] ) ) {
             $res = array(
                 'status' => 1,
                 'data' => array(
@@ -312,161 +278,6 @@ class Linking_Posts_Manager_Admin extends Linking_Posts_Options {
 
         die();
 
-    }
-
-    public function posts_fields_filter_related_posts( $fields ) {
-        global $table_prefix, $wpdb;
-        $fields .= ", " . $table_prefix . "related_posts.order as article_order, related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
-        return ($fields);
-    }
-
-    public function posts_fields_filter_linking_posts( $fields ) {
-        global $table_prefix, $wpdb;
-        $fields .= ", related_post_details.ID as related_post_ID, related_post_details.post_title as related_post_title, related_post_details.post_name as related_post_slug";
-        return ($fields);
-    }
-
-    public function posts_fields_filter_possible_linking_posts_single_reference( $fields ) {
-        global $table_prefix, $wpdb;
-        $fields .= ", " . $table_prefix . "related_posts.related_post_id as related_post_ID";
-        return ($fields);
-    }
-
-    public function posts_join_filter_related_posts( $join ) {
-        global $table_prefix, $wpdb;
-        $join .=
-            "
-              LEFT JOIN " . $table_prefix . "related_posts
-                ON (" . $table_prefix . "related_posts.linking_post_id = $wpdb->posts.ID)
-              LEFT JOIN " . $table_prefix . "posts as related_post_details
-                ON (" . $table_prefix . "related_posts.related_post_id = related_post_details.ID)
-            ";
-        return $join;
-    }
-
-    public function posts_join_filter_linking_posts( $join ) {
-        global $table_prefix, $wpdb;
-        $join .=
-            "
-              LEFT JOIN " . $table_prefix . "related_posts
-                ON (" . $table_prefix . "related_posts.related_post_id = $wpdb->posts.ID)
-              LEFT JOIN " . $table_prefix . "posts as related_post_details
-                ON (" . $table_prefix . "related_posts.linking_post_id = related_post_details.ID)
-            ";
-        return $join;
-    }
-
-    public function posts_join_filter_possible_linking_posts_single_reference( $join ) {
-        global $table_prefix, $post, $wpdb;
-        $join .=
-            "
-              LEFT JOIN " . $table_prefix . "related_posts
-                ON (" . $table_prefix . "related_posts.related_post_id = $wpdb->posts.ID)
-            ";
-        return $join;
-    }
-
-
-    public function posts_where_filter_related_posts( $where ) {
-        global $post, $table_prefix, $wpdb;
-        $where .= " AND " . $table_prefix . "related_posts.linking_post_id = " . $post->ID;
-        return $where;
-    }
-
-    public function posts_where_filter_linking_posts( $where ) {
-        global $post, $table_prefix, $wpdb;
-        $where .= " AND " . $table_prefix . "related_posts.related_post_id = $post->ID";
-        return $where;
-    }
-
-    public function posts_where_filter_possible_linking_posts( $where ) {
-        global $post, $wpdb;
-        $where .= " AND $wpdb->posts.id != " . $post->ID;
-        if ( $data = wp_cache_get( $post->ID, 'linked_posts_ids' ) ) {
-            $where .= " AND $wpdb->posts.id NOT IN ( " . implode( ',', $data ) . ")";
-        }
-        return $where;
-    }
-
-    public function posts_where_filter_possible_linking_posts_single_reference( $where ) {
-        global $post, $wpdb;
-        $where .= " AND related_post_ID is NULL ";
-        return $where;
-    }
-
-    public function posts_groupby_filter_possible_linking_posts_single_reference( $groupby ) {
-        global $wpdb;
-        $groupby = "{$wpdb->posts}.ID";
-        return $groupby;
-    }
-
-    function update_related_posts_orders( $linking_post_id = null, $ordered_related_posts_ids = array() ) {
-        global $table_prefix, $wpdb; // this is how you get access to the database
-
-        $order = 0;
-
-        foreach( $ordered_related_posts_ids as $related_post_id ) {
-            $order++;
-            $wpdb->replace(
-                $table_prefix . 'related_posts',
-                array(
-                    'linking_post_id' => $linking_post_id,
-                    'related_post_id' => $related_post_id,
-                    'order' => $order,
-                ),
-                array(
-                    '%d',
-                    '%d',
-                    '%d',
-                )
-            );
-        }
-
-        return true;
-
-    }
-
-    function add_related_post( $linking_post_id = null, $related_post_id = null, $order = 0 ) {
-        global $table_prefix, $wpdb; // this is how you get access to the database
-
-        $wpdb->replace(
-            $table_prefix . 'related_posts',
-            array(
-                'linking_post_id' => $linking_post_id,
-                'related_post_id' => $related_post_id,
-                'order' => $order,
-            ),
-            array(
-                '%d',
-                '%d',
-                '%d',
-            )
-        );
-
-        return true;
-    }
-
-    function remove_related_post( $linking_post_id = null, $related_post_id = null ) {
-        global $table_prefix, $wpdb; // this is how you get access to the database
-
-        $wpdb->delete(
-            $table_prefix . 'related_posts',
-            array(
-                'linking_post_id' => $linking_post_id,
-                'related_post_id' => $related_post_id,
-            ),
-            array(
-                '%d',
-                '%d',
-            )
-        );
-
-        return true;
-
-    }
-
-    function issue_articles_order_compare($a, $b){
-        return $a->article_order - $b->article_order;
     }
 
 }

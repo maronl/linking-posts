@@ -80,7 +80,10 @@ class Linking_Posts_Manager {
      */
     private function load_dependencies() {
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-linking-posts-options.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-linking-posts-model.php';
         require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-linking-posts-manager-admin.php';
+        require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-linking-posts-theme-functions.php';
+
         require_once plugin_dir_path( __FILE__ ) . 'class-linking-posts-loader.php';
         $this->loader = new Linking_Posts_Loader();
 
@@ -97,7 +100,8 @@ class Linking_Posts_Manager {
      */
     private function define_admin_hooks() {
 
-        $admin = new Linking_Posts_Manager_Admin( $this->version );
+        $data_model = Linking_Posts_Model::getInstance();
+        $admin = new Linking_Posts_Manager_Admin( $this->version, $data_model);
         $this->loader->add_action( 'admin_init', $admin, 'register_scripts' );
         $this->loader->add_action( 'admin_init', $admin, 'register_styles' );
         $this->loader->add_action( 'admin_enqueue_scripts', $admin, 'enqueue_scripts' );
@@ -123,6 +127,7 @@ class Linking_Posts_Manager {
      * @access private
      */
     private function define_public_hooks() {
+        Linking_Posts_Theme_Functions::define_theme_functions();
 
     }
 

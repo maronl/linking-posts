@@ -25,7 +25,7 @@ jQuery(function() {
 
             if(response.status == 1){
 
-                new_article = '<li id="linked_posts_orders_' + response.data.id + '" class="ui-state-default"><div class="dashicons dashicons-sort"></div><a href="/wp-admin/post.php?post=1&amp;action=edit">' + response.data.title + '</a> - <a href="#1" class="remove-post-link">remove</a></li>';
+                new_article = '<li id="linked_posts_orders_' + response.data.id + '" class="ui-state-default"><div class="dashicons dashicons-sort"></div><a href="/wp-admin/post.php?post=' + response.data.id + '&amp;action=edit">' + response.data.title + '</a> - <a href="#' + response.data.id + '" class="remove-post-link">remove</a></li>';
 
                 jQuery("#sortable").append(new_article);
                 jQuery("#sortable").sortable('refresh');
