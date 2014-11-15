@@ -16,7 +16,7 @@ class Linking_Posts_Model {
 
         $args = array(
             'post_type' => $post->post_type,
-//            'post_status' => $this->related_posts_valid_status,
+            'post_status' => 'any',
         );
 
         add_filter('posts_fields', array( $this, 'posts_fields_filter_related_posts' ) );
@@ -65,7 +65,7 @@ class Linking_Posts_Model {
 
         $args = array(
             'post_type' => $post->post_type,
-            //'post_status' => $valid_post_status,
+            'post_status' => 'any',
         );
 
         add_filter('posts_fields', array( $this, 'posts_fields_filter_linking_posts' ) );
